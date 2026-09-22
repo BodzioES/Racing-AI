@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     # Slot nasluchuje tylko na localhost. Publiczny ruch idzie przez
     # Twoj wlasny Nginx (reverse proxy) na tym samym VPS.
-    # Nginx robi: racing-ai.kuncrog.com -> 127.0.0.1:8000 (+ HTTPS).
+    # Nginx robi: racing-ai.kuncrog.com -> 127.0.0.1:8001 (+ HTTPS).
+    # UWAGA: host-port 8001 (nie 8000), bo 8000 zajmuje juz portfolio-web-1.
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8001:8000"

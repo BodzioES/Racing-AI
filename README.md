@@ -81,10 +81,12 @@ cd racing-ai
 docker compose up --build -d
 ```
 
-This starts one container: the app on `127.0.0.1:8000` (not exposed
+This starts one container: the app on `127.0.0.1:8001` (not exposed
 publicly). Public traffic goes through **your own Nginx** on the same VPS:
 
-`racing-ai.kuncrog.com` -> Nginx (80/443, HTTPS) -> `127.0.0.1:8000`.
+`racing-ai.kuncrog.com` -> Nginx (80/443, HTTPS) -> `127.0.0.1:8001`.
+
+(port 8001, bo 8000 zajmuje juz portfolio-web-1 na tym VPS).
 
 Nginx vhost: [`nginx/racing-ai.kuncrog.com.conf`](nginx/racing-ai.kuncrog.com.conf).
 Copy it to `/etc/nginx/sites-available/`, symlink to `sites-enabled`,
@@ -98,7 +100,7 @@ config already has that for `/` (so `/ws` works too). Minimal snippet:
 
 ```nginx
 location / {
-    proxy_pass http://127.0.0.1:8000;
+    proxy_pass http://127.0.0.1:8001;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
