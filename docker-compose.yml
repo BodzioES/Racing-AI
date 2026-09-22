@@ -1,0 +1,11 @@
+services:
+  ai-racers:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    # Slot nasluchuje tylko na localhost. Publiczny ruch idzie przez
+    # Twoj wlasny Nginx (reverse proxy) na tym samym VPS.
+    # Nginx robi: racing-ai.kuncrog.com -> 127.0.0.1:8000 (+ HTTPS).
+    ports:
+      - "127.0.0.1:8000:8000"

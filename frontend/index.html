@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Racers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="hint" aria-hidden="true">
+  <svg class="loop" viewBox="0 0 220 130">
+    <path class="lp" pathLength="1" d="M60,88 C34,52 72,22 116,28 C166,34 190,72 158,100 C128,124 78,116 60,88 Z"/>
+    <circle class="st" cx="60" cy="88" r="6"/>
+  </svg>
+  <h1 data-i18n="hintTitle"></h1>
+  <p data-i18n="hintSub"></p>
+</div>
+
+<section id="hud" class="panel">
+  <div class="hud-head">
+    <div class="brand"><b>AI Racers</b><small data-i18n="sub"></small></div>
+    <div class="hbtns">
+      <button class="tiny" id="langBtn" type="button">EN</button>
+      <button class="tiny" id="colBtn" type="button" aria-label="Collapse">&minus;</button>
+    </div>
+  </div>
+  <div class="mini" id="miniLine"></div>
+  <div class="detail">
+    <div class="status" id="status" hidden></div>
+    <div class="grid">
+      <div><span class="k" data-i18n="gen"></span><span class="v" id="vGen">1</span></div>
+      <div><span class="k" data-i18n="alive"></span><span class="v" id="vAlive">-</span></div>
+      <div><span class="k" data-i18n="best"></span><span class="v" id="vBest">-</span></div>
+      <div><span class="k" data-i18n="lap"></span><span class="v" id="vLap">-</span></div>
+    </div>
+    <label class="row"><span data-i18n="speed"></span><output id="oSpeed">3x</output>
+      <input type="range" id="rSpeed" min="1" max="20" value="3"></label>
+    <label class="row"><span data-i18n="width"></span><output id="oWidth"></output>
+      <input type="range" id="rWidth" min="36" max="140" value="70"></label>
+  </div>
+  <p class="mini conn" id="connLine"></p>
+</section>
+
+<section id="viz" class="panel">
+  <p class="cap" data-i18n="brain"></p>
+  <canvas id="brain"></canvas>
+  <p class="cap" data-i18n="graph"></p>
+  <canvas id="graph"></canvas>
+</section>
+
+<nav id="bar" class="panel">
+  <button class="btn primary" id="bNew" type="button" data-i18n="newTrack"></button>
+  <button class="btn" id="bRand" type="button" data-i18n="randTrack"></button>
+  <button class="btn" id="bPause" type="button"></button>
+  <button class="btn" id="bInfo" type="button" data-i18n="how"></button>
+  <button class="btn" id="bFull" type="button" aria-label="Fullscreen">&#x26F6;</button>
+</nav>
+
+<div id="toast" role="status"></div>
+
+<div id="info" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+  <div class="card">
+    <h2 id="infoTitle" data-i18n="infoTitle"></h2>
+    <ul id="infoList"></ul>
+    <button class="btn primary" id="infoClose" type="button" data-i18n="close"></button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

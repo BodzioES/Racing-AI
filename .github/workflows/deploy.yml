@@ -1,0 +1,45 @@
+name: Deploy to VPS
+
+# Strategia: git pull na VPS.
+# Po kazdym pushu na main: SSH na VPS -> cd ~/racing-ai -> git pull -> docker compose up --build -d.
+# Wymagane GitHub Secrets (Settings -> Secrets and variables -> Actions -> New repository secret):
+#   VPS_HOST     - IP lub hostname VPS (np. 1.2.3.4)
+#   VPS_USERNAME - uzytkownik SSH na VPS (np. root albo twoj user z sudo/docker)
+#   VPS_SSH_KEY  - PRYWATNY klucz SSH (ten, ktorego PUBLICZNA czesc wgrales do ~/.ssh/authorized_keys na VPS)
+# Opcjonalnie jako Variables (nie sekrety):
+#   VPS_PORT     - port SSH (domyslnie 22)
+#   VPS_PROJECT_DIR - katalog projektu na VPS (domyslnie ~/racing-ai)
+#
+# Pierwszy raz na VPS musisz recznie: sklonowac repo do ~/racing-ai (patrz README / instrukcja).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH (git pull + compose up)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ vars.VPS_PORT || '22' }}
+          script: |
+            set -e
+            PROJECT_DIR="${{ vars.VPS_PROJECT_DIR }}"
+            if [ -z "$PROJECT_DIR" ]; then PROJECT_DIR="$HOME/racing-ai"; fi
+            echo "==> Deploy dir: $PROJECT_DIR"
+            if [ ! -d "$PROJECT_DIR/.git" ]; then
+              echo "ERROR: $PROJECT_DIR/.git not found. First clone on VPS:"
+              echo "  git clone https://github.com/BodzioES/Racing-AI.git $PROJECT_DIR"
+              exit 1
+            fi
+            cd "$PROJECT_DIR"
+            git pull origin main
+            docker compose up --build -d
+            docker compose ps
+            curl -fsS --max-time 10 http://127.0.0.1:8000/health || docker compose logs --tail=50
