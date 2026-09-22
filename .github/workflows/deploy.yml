@@ -40,6 +40,12 @@ jobs:
             fi
             cd "$PROJECT_DIR"
             git pull origin main
-            docker compose up --build -d
+            echo "==> What holds port 8000 (before):"
+            (ss -tlnp 2>/dev/null | grep ':8000' || echo "nothing on :8000 via ss")
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || true
+            # Poprzedni kontener trzyma port -> zdejmij przed postawieniem nowego.
+            # Bez tego dostaniesz: "Bind for 0.0.0.0:8000 failed: port is already allocated".
+            docker compose down --remove-orphans || true
+            docker compose up --build -d --remove-orphans
             docker compose ps
             curl -fsS --max-time 10 http://127.0.0.1:8000/health || docker compose logs --tail=50
