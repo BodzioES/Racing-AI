@@ -245,14 +245,47 @@ cv.addEventListener('pointercancel', endStroke);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
 /* ---------- rendering ---------- */
+function rr(g, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  g.beginPath();
+  if (g.roundRect) g.roundRect(x, y, w, h, r);
+  else g.rect(x, y, w, h);
+}
 function dart(x, y, a, color, alpha, glow) {
+  // Top-down vector car: +X is the front. Same signature/geometry anchor
+  // as the old dart so drawSim/server need no changes.
   ctx.save(); ctx.translate(x, y); ctx.rotate(a);
-  ctx.globalAlpha = alpha; ctx.fillStyle = color;
+  ctx.globalAlpha = alpha;
+  const L = carLen, W = carLen * 0.5;
+  const x0 = -L / 2, y0 = -W / 2;
+  // under-shadow for depth (cheap, no blur)
+  ctx.globalAlpha = alpha * 0.45; ctx.fillStyle = '#000';
+  rr(ctx, x0 - 1, y0 - 1, L + 2, W + 2, 3); ctx.fill();
+  ctx.globalAlpha = alpha;
+  // 4 wheels sticking out of the body
+  ctx.fillStyle = '#111';
+  const ww = L * 0.22, wh = Math.max(2, W * 0.18);
+  const wx = [x0 + L * 0.12, x0 + L * 0.66];
+  for (const px of wx) {
+    ctx.fillRect(px, y0 - wh + 1, ww, wh);
+    ctx.fillRect(px, y0 + W - 1, ww, wh);
+  }
+  // body (glow only for the leader)
   if (glow) { ctx.shadowColor = color; ctx.shadowBlur = 16; }
-  const L = carLen, W = carLen * 0.6;
-  ctx.beginPath();
-  ctx.moveTo(L * 0.6, 0); ctx.lineTo(-L * 0.5, -W / 2); ctx.lineTo(-L * 0.25, 0); ctx.lineTo(-L * 0.5, W / 2);
-  ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.fillStyle = color;
+  rr(ctx, x0, y0, L, W, 3); ctx.fill();
+  ctx.shadowBlur = 0;
+  // cabin + windshield, shifted toward the front
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  rr(ctx, x0 + L * 0.38, y0 + W * 0.18, L * 0.3, W * 0.64, 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillRect(x0 + L * 0.6, y0 + W * 0.24, Math.max(1.5, L * 0.06), W * 0.52);
+  // headlights: two dots on the nose so front stays readable at small sizes
+  ctx.fillStyle = '#fff';
+  const hy = Math.max(1.5, W * 0.14);
+  ctx.beginPath(); ctx.arc(x0 + L - 1.5, y0 + W * 0.2, hy / 2, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(x0 + L - 1.5, y0 + W * 0.8, hy / 2, 0, 7); ctx.fill();
+  ctx.restore();
 }
 function drawSim() {
   const f = latest;
