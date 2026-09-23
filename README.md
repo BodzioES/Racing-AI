@@ -1,135 +1,120 @@
 # AI Racers
 
-Draw a racetrack anywhere on the screen. A population of small neural
-networks learns to drive it from scratch, generation by generation, with a
-genetic algorithm (neuroevolution) -- no training data, no hand-written
-driving rules.
+**Zagraj na żywo: [https://racing-ai.kuncrog.com](https://racing-ai.kuncrog.com)**
 
-**Split on purpose:** all simulation and learning run in **Python (NumPy)**
-on the backend. The browser is a thin client: it lets you draw the track,
-opens a WebSocket, and only draws whatever frames the server sends. Nothing
-about the cars, the sensors, the neural nets, or the genetic algorithm runs
-in JavaScript.
+Narysuj tor na ekranie, a populacja małych sieci neuronowych nauczy się po nim
+jeździć od zera — pokolenie za pokoleniem, przez ewolucję. Bez danych
+treningowych, bez wpisanych reguł jazdy.
 
-## Architecture
+## Czym jest ten projekt i co robi
 
-```
-frontend/            static HTML/CSS/JS, served by the backend
-  index.html
-  style.css
-  app.js             drawing UI + WebSocket client + canvas rendering only
+AI Racers to demo **neuroewolucji**: algorytm genetyczny trenuje sieć neuronową
+sterującą autkiem. Otwierasz stronę, rysujesz zamkniętą pętlę (lub losujesz
+przyciskem), a serwer zaczyna symulację:
 
-backend/
-  app/
-    config.py        all tunable constants in one place
-    track.py         hand-drawn points -> smooth closed centerline -> pixel mask (Pillow)
-    neuroevolution.py  population of 6-8-2 nets as batched NumPy arrays
-                        + selection / crossover / mutation
-    simulation.py    car physics, ray-sensors, progress tracking -- vectorized
-                        over the whole population (no per-car Python loop)
-    world.py         ties one track + the running generations together;
-                        one World per WebSocket connection
-    main.py          FastAPI app: serves the frontend, runs the /ws loop
-  requirements.txt
-  Dockerfile
+1. Na tor wyjeżdża **80 aut**, każde z własną, losową siecią neuronową.
+2. Auta jadą — większość od razu wypada z toru, kilka dojedzie dalej.
+3. Gdy pokolenie się kończy, auta z **najlepszym wynikiem** (najdłuższy dystans)
+   są krzyżowane i mutowane, a ich potomstwo jedzie w następnym pokoleniu.
+4. Po kilkunastu–kilkudziesięciu pokoleniach auta potrafią przejechać pełne
+   okrążenia.
 
-tests/
-  test_track_and_sim.py   pytest: track geometry, forward pass, genetic
-                            operators, generation-end conditions
+Na żywo widać: pozycje wszystkich aut, 5 promieni-sensorów lidera, wizualizację
+jego mózgu (aktywacje neuronów) oraz wykres postępu w kolejnych pokoleniach.
+Można zmieniać prędkość symulacji (1–20×), szerokość toru, pauzować i resetować
+ewolucję.
 
-docker-compose.yml   tylko aplikacja na 127.0.0.1:8000 (bez Caddy)
-nginx/               przykladowy vhost dla wlasnego Nginx na VPS
-  racing-ai.kuncrog.com.conf
-.github/workflows/
-  deploy.yml         deploy na VPS: ssh + git pull + compose up
-```
+## Jak to działa
 
-### Protocol (over one WebSocket per tab, at `/ws`)
+**Podział ról:** cała symulacja i uczenie liczą się w **Pythonie (NumPy)** na
+backendzie. Przeglądarka to cienki klient: pozwala narysować tor, otwiera
+WebSocket i tylko rysuje klatki, które przysyła serwer. W JavaScript nie ma
+ani fizyki, ani sieci neuronowych, ani algorytmu genetycznego.
 
-Client -> server:
-- `{"type":"track","points":[[x,y],...],"width":70,"w":1280,"h":720}` -- sent once the drawn loop closes
-- `{"type":"speed","value":12}` -- simulation speed multiplier, 1-20
-- `{"type":"pause","value":true}`
-- `{"type":"reset"}` -- new random population on the same track
+Przebieg po narysowaniu toru:
 
-Server -> client:
-- `{"type":"track_ready","centerline":[...],"width":70,"startAngle":1.02}` -- the actual track the simulation will use (already resampled/smoothed), so the frontend draws exactly what's being simulated
-- `{"type":"track_too_short"}`
-- `{"type":"frame", gen, alive, pop, bestLaps, bestLapSec, lapFraction, leaderPos, leaderRays, leaderBrain, leaderInput, leaderHidden, leaderOutput, cars, deaths, history}` -- sent ~30x/second
+1. Frontend wysyła punkty przez WebSocket (`/ws`, wiadomość `track`).
+2. Backend zamienia bazgroł w gładką, równo rozłożoną linię środkową
+   (`track.py`: resampling co ~5 px + wygładzanie średnią ruchomą) i rasteryzuje
+   maskę toru (Pillow). Za krótki tor jest odrzucany (`track_too_short`).
+3. Serwer odsyła gotowy tor (`track_ready`) — frontend rysuje dokładnie to,
+   co będzie symulowane.
+4. Serwer tyka 30 razy na sekundę, na każdy tick robi 1–20 kroków fizyki
+   (zależnie od suwaka prędkości) i wysyła klatkę JSON (`frame`): pozycje aut,
+   lidera, jego sensory i wagi, historię wyników.
 
-## Why this is vectorized, not just "translated to Python"
+Każda karta przeglądarki dostaje **osobny świat** (osobny tor i populację) —
+dwie osoby mogą używać demo naraz bez dzielenia stanu.
 
-The forward pass for the whole population is one batched `einsum`, not an
-80-iteration loop:
+## Jaka to sieć i jak się uczy
+
+Klasyczny **feedforward 6-8-2** (warstwa wejściowa → 8 neuronów ukrytych →
+2 wyjścia), aktywacja `tanh` wszędzie:
+
+- **6 wejść:** 5 czujników odległości (promienie pod kątami
+  −1.2, −0.6, 0, +0.6, +1.2 radiana względem kierunku auta, znormalizowane
+  0–1) + własna prędkość.
+- **2 wyjścia:** skręt i gaz (oba w zakresie −1…1, gaz mapowany na prędkość
+  minimalną–maksymalną).
+
+Uczenie to **nie** gradient ani reinforcement learning — wagi zmieniają się
+tylko przez operatory genetyczne, raz na pokolenie:
+
+- **Fitness** = najdalszy dystans wzdłuż toru przed śmiercią (wypadnięcie
+  z toru albo stanie w miejscu przez 90 kroków).
+- **Elita:** 4 najlepsze auta przechodzą bez zmian.
+- **Selekcja:** rodzice losowani z top 60% (z wagą na najlepszych).
+- **Krzyżowanie:** uniform per-waga z prawdopodobieństwem 0.35.
+- **Mutacja:** szum gaussowski na ~12% wag; przy stagnacji (brak poprawy
+  najlepszego wyniku) mutacja rośnie automatycznie.
+- ~5% każdego pokolenia to świeże, losowe sieci (utrzymują różnorodność).
+- Pokolenie kończy się, gdy wszystkie auta zginą, skończy się limit kroków
+  albo lider przejedzie 2 okrążenia.
+
+Wszystkie stałe (rozmiar populacji, tempo mutacji, fizyka auta) są w jednym
+miejscu: `backend/app/config.py`.
+
+Forward dla całej populacji to jedna operacja macierzowa, nie pętla po
+80 autach:
 
 ```python
 hidden = np.tanh(np.einsum("pi,pih->ph", inputs, self.W1) + self.b1)
 ```
 
-Ray-casting, physics, collision checks and nearest-centerline lookups are
-all done as whole-array NumPy operations across every car at once. This is
-also *why* it can run at up to 20x simulation speed and still keep up with
-a 30 Hz WebSocket stream.
+Tak samo ray-casting, fizyka, kolizje i pomiar postępu liczą się wektorowo
+dla wszystkich aut naraz — dlatego symulacja wyrabia 20× prędkości przy
+30 klatkach na sekundę.
 
-## Running it
+## Jak odpalić lokalnie
 
-### With Docker (recommended, matches production)
+### Docker (polecane)
 
 ```bash
 git clone https://github.com/BodzioES/Racing-AI.git racing-ai
 cd racing-ai
-docker compose up --build -d
+docker compose up --build
 ```
 
-This starts one container: the app on `127.0.0.1:8001` (not exposed
-publicly). Public traffic goes through **your own Nginx** on the same VPS:
+Strona: **http://localhost:8001**, healthcheck: `http://localhost:8001/health`.
+Zatrzymanie: `docker compose down`.
 
-`racing-ai.kuncrog.com` -> Nginx (80/443, HTTPS) -> `127.0.0.1:8001`.
+### Bez Dockera (Python 3.12)
 
-(port 8001, bo 8000 zajmuje juz portfolio-web-1 na tym VPS).
-
-Nginx vhost: [`nginx/racing-ai.kuncrog.com.conf`](nginx/racing-ai.kuncrog.com.conf).
-Copy it to `/etc/nginx/sites-available/`, symlink to `sites-enabled`,
-then `certbot --nginx -d racing-ai.kuncrog.com`.
-
-DNS: `racing-ai.kuncrog.com` A record -> your VPS IP (already set in OVH).
-
-**WebSocket is mandatory** -- `/ws` needs `Upgrade`/`Connection` headers,
-otherwise the page sits on "Connecting to server...". The bundled Nginx
-config already has that for `/` (so `/ws` works too). Minimal snippet:
-
-```nginx
-location / {
-    proxy_pass http://127.0.0.1:8001;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-}
-```
-
-### Deploy na VPS (auto przez GitHub Actions)
-
-Workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
-robi na kazdy push do `main`: SSH -> `git pull` w `~/racing-ai` ->
-`docker compose up --build -d`.
-
-Ustaw w GitHub: repo -> Settings -> Secrets and variables -> Actions:
-
-- Secrets: `VPS_HOST`, `VPS_USERNAME`, `VPS_SSH_KEY`
-- Variables (opcjonalnie): `VPS_PORT` (domyslnie `22`), `VPS_PROJECT_DIR` (domyslnie `~/racing-ai`)
-
-### Without Docker (local dev)
-
-```bash
+```powershell
 cd backend
-python -m venv .venv && source .venv/bin/activate
+py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
-Open `http://localhost:8000`.
+Strona: **http://localhost:8000**.
 
-### Tests
+> Uwaga: projekt wymaga **Pythona 3.12** (taki sam jest w Dockerze).
+> Na Pythonie 3.14 `pip install` się nie powiedzie, bo `numpy==2.1.3`
+> nie ma gotowych pakietów dla tej wersji.
+
+### Testy
 
 ```bash
 cd backend
@@ -137,53 +122,34 @@ pip install pytest
 pytest ../tests -v
 ```
 
-## Honest status -- read this before you demo it
+## Struktura projektu
 
-I (the AI that wrote this) built and unit-tested the **logic** thoroughly:
+```
+frontend/
+  index.html        strona (PL/EN), warstwy canvas, HUD
+  style.css         jeden ciemny motyw (#121214, akcent #60a5fa);
+                    canvas czyta te zmienne na żywo
+  app.js            rysowanie toru + klient WebSocket + render canvas
+                    (auta to wektorowe grafiki top-down rysowane kodem)
 
-- `track.py`, `neuroevolution.py`, `simulation.py`, `world.py` were run
-  directly in Python (NumPy is available in the sandbox I built this in).
-  All 6 tests in `tests/test_track_and_sim.py` pass.
-- I ran the full generation-by-generation evolution against several
-  synthetic tracks (an ellipse and multiple randomly-shaped loops) and
-  confirmed cars go from ~0.1 laps in generation 1 to mastering the track
-  (2 full laps, 30%+ of the population lapping) within roughly 10-36
-  generations, depending on track shape. That's slower than the original
-  all-JavaScript prototype (which used a slightly different mutation
-  schedule); if you want it to converge faster, the easiest knobs are in
-  `config.py` (`MUTATION_RATE`, `MUTATION_SIGMA`, `INIT_WEIGHT_SCALE`).
-- Throughput was in the thousands of simulation steps per second on a
-  single CPU core, comfortably enough for 20x speed at a 30 Hz frame rate.
+backend/
+  app/
+    config.py         wszystkie przestrajalne stałe
+    track.py          bazgroł -> gładka linia środkowa -> maska toru
+    neuroevolution.py populacja sieci 6-8-2 + selekcja/krzyżowanie/mutacja
+    simulation.py     fizyka, sensory, postęp — wektorowo dla całej populacji
+    world.py          jeden tor + kolejne pokolenia; jeden World na połączenie
+    main.py           FastAPI: frontend, /health, pętla /ws
+  requirements.txt
+  Dockerfile          python:3.12-slim + uvicorn na porcie 8000
 
-**What I could not test here:** my sandbox has no internet access and
-doesn't have `fastapi`/`uvicorn`/`websockets` installed, and no browser. So
-`main.py` (the actual WebSocket server) and `app.js` (the actual browser
-client) are written carefully and match the tested logic's data shapes and
-message protocol exactly -- but I have never run them end-to-end together,
-and I have never opened the page in a real browser. Realistic things that
-could still be wrong: a message-shape mismatch I typo'd on one side, a
-CSS/canvas sizing issue on your monitor or phone, or a proxy/WebSocket
-config issue on your specific server setup.
+tests/
+  test_track_and_sim.py  6 testów: geometria toru, forward, elita,
+                         śmierć poza torem, pełny przebieg World -> frame
 
-**Before you show this to anyone:** run `docker compose up --build`, open
-the page yourself, draw a few tracks (including a small one and a very
-loopy one), leave it running for a few minutes, and try it on your phone.
-If anything breaks, tell me exactly what happened (an error in the browser
-console is the most useful thing you can paste back) and I'll fix it.
+docker-compose.yml    aplikacja na 127.0.0.1:8001 (na produkcji za Nginx)
+```
 
-## Talking about this in an interview
-
-- It's a genetic algorithm (neuroevolution), not reinforcement learning or
-  supervised learning -- there's no reward signal being backpropagated and
-  no labeled dataset. Say that plainly; it's still a legitimate, classic
-  approach and it's honest.
-- Be ready to explain: why a 6-8-2 network, what the 5 ray-sensors are and
-  why they're relative to the car's heading, what "fitness" is here
-  (distance traveled along the track before dying or stalling), how
-  selection/crossover/mutation produce the next generation, and why the
-  simulation is vectorized with NumPy instead of a Python loop per car.
-- Reasonable follow-up question: "why not reinforcement learning?"
-  Neuroevolution needs no gradients, is simple to implement and to reason
-  about, and parallelizes trivially across a population -- a fair trade
-  against typically needing more total simulated steps than RL to reach
-  the same result.
+Produkcyjnie projekt działa pod adresem
+**[racing-ai.kuncrog.com](https://racing-ai.kuncrog.com)**
+(Nginx + HTTPS + Cloudflare, deploy z GitHub Actions przy każdym pushu na `main`).
