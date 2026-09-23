@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#121214"/>
+  <g transform="translate(32,34)">
+    <!-- wheels -->
+    <rect x="-15" y="-16" width="7" height="10" rx="2" fill="#0a0a0c"/>
+    <rect x="8" y="-16" width="7" height="10" rx="2" fill="#0a0a0c"/>
+    <rect x="-15" y="7" width="7" height="10" rx="2" fill="#0a0a0c"/>
+    <rect x="8" y="7" width="7" height="10" rx="2" fill="#0a0a0c"/>
+    <!-- body -->
+    <rect x="-11" y="-24" width="22" height="48" rx="6" fill="#60a5fa"/>
+    <!-- cabin -->
+    <rect x="-7" y="-8" width="14" height="16" rx="4" fill="rgba(0,0,0,0.45)"/>
+    <!-- windshield -->
+    <rect x="-6" y="-16" width="12" height="4" rx="2" fill="rgba(255,255,255,0.75)"/>
+    <!-- headlights -->
+    <circle cx="-6" cy="-21" r="2" fill="#fff"/>
+    <circle cx="6" cy="-21" r="2" fill="#fff"/>
+  </g>
+</svg>
