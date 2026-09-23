@@ -70,7 +70,7 @@ let cssW = 0, cssH = 0, dpr = 1;
 
 function readColors() {
   const cs = getComputedStyle(document.documentElement);
-  for (const k of ['bg', 'grid', 'vignette', 'track', 'edge', 'line', 'car', 'lead', 'ok', 'bad', 'accent', 'text', 'muted'])
+  for (const k of ['bg', 'grid', 'track', 'edge', 'line', 'car', 'lead', 'ok', 'bad', 'accent', 'text', 'muted'])
     C[k] = cs.getPropertyValue('--' + k).trim();
 }
 
@@ -143,13 +143,20 @@ function renderStatic() {
   const g = staticLayer.getContext('2d');
   g.setTransform(d, 0, 0, d, 0, 0);
   g.fillStyle = C.bg; g.fillRect(0, 0, cssW, cssH);
+  // ambient glows like kuncrog.com: purple top-center, blue right + bottom-left
+  let gl = g.createRadialGradient(cssW / 2, 0, 0, cssW / 2, 0, Math.max(cssW, cssH) * 0.6);
+  gl.addColorStop(0, 'rgba(88,50,180,0.06)'); gl.addColorStop(1, 'rgba(88,50,180,0)');
+  g.fillStyle = gl; g.fillRect(0, 0, cssW, cssH);
+  gl = g.createRadialGradient(cssW * 0.8, cssH * 0.5, 0, cssW * 0.8, cssH * 0.5, Math.max(cssW, cssH) * 0.5);
+  gl.addColorStop(0, 'rgba(96,165,250,0.04)'); gl.addColorStop(1, 'rgba(96,165,250,0)');
+  g.fillStyle = gl; g.fillRect(0, 0, cssW, cssH);
+  gl = g.createRadialGradient(cssW * 0.2, cssH * 0.8, 0, cssW * 0.2, cssH * 0.8, Math.max(cssW, cssH) * 0.5);
+  gl.addColorStop(0, 'rgba(50,100,255,0.04)'); gl.addColorStop(1, 'rgba(50,100,255,0)');
+  g.fillStyle = gl; g.fillRect(0, 0, cssW, cssH);
   g.strokeStyle = C.grid; g.lineWidth = 1; g.beginPath();
-  for (let x = 0.5; x < cssW; x += 40) { g.moveTo(x, 0); g.lineTo(x, cssH); }
-  for (let y = 0.5; y < cssH; y += 40) { g.moveTo(0, y); g.lineTo(cssW, y); }
+  for (let x = 0.5; x < cssW; x += 48) { g.moveTo(x, 0); g.lineTo(x, cssH); }
+  for (let y = 0.5; y < cssH; y += 48) { g.moveTo(0, y); g.lineTo(cssW, y); }
   g.stroke();
-  const grd = g.createRadialGradient(cssW / 2, cssH / 2, Math.min(cssW, cssH) * 0.3, cssW / 2, cssH / 2, Math.max(cssW, cssH) * 0.75);
-  grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(1, C.vignette);
-  g.fillStyle = grd; g.fillRect(0, 0, cssW, cssH);
   if (centerline) drawTrack(g);
 }
 function fitSmall(c, w, h) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.style.width = w + 'px'; c.style.height = h + 'px'; }
