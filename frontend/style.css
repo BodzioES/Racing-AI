@@ -1,33 +1,19 @@
 :root{
   box-sizing:border-box;
+  color-scheme:dark;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
-  --bg:#eef3f9; --grid:rgba(30,70,130,.09); --vignette:rgba(30,70,130,.12);
-  --track:#dbe6f4; --edge:#3b5f8f; --line:rgba(20,50,100,.38);
-  --car:#e8590c; --lead:#b87400; --ok:#0f9a62; --bad:#d6304f; --accent:#0b57c4;
-  --text:#10233d; --muted:#57708f;
-  --panel:rgba(247,250,255,.88); --panel-line:rgba(30,70,130,.24); --shadow:0 10px 30px rgba(20,50,100,.16);
-  --btn:#10233d; --btn-text:#f3f7fc; --scrim:rgba(16,35,61,.38);
+  /* Paleta na bazie kuncrog.com: jeden ciemny motyw (#121214 + niebieski akcent).
+     Canvas (app.js:readColors) czyta te zmienne dynamicznie, wiec tor, auta,
+     promienie i wykresy podazaja automatycznie. */
+  --bg:#121214; --grid:rgba(96,165,250,.07); --vignette:rgba(0,0,0,.5);
+  --track:#24242b; --edge:#60a5fa; --line:rgba(96,165,250,.4);
+  --car:#ff8a4c; --lead:#60a5fa; --ok:#00e676; --bad:#ff5252; --accent:#60a5fa;
+  --text:#e8e8ed; --muted:#a8a8b3;
+  --panel:rgba(30,30,36,.85); --panel-line:#2a2a30; --shadow:8px 8px 16px rgba(0,0,0,.55);
+  --btn:#e8e8ed; --btn-text:#121214; --scrim:rgba(0,0,0,.6);
   --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
   --ui:'Instrument Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#0f2238; --grid:rgba(150,195,255,.08); --vignette:rgba(2,8,18,.5);
-    --track:#183553; --edge:#86aede; --line:rgba(225,238,255,.38);
-    --car:#ff8a4c; --lead:#ffe14d; --ok:#5be3a3; --bad:#ff6b87; --accent:#7db4ff;
-    --text:#eaf2ff; --muted:#94aac8;
-    --panel:rgba(14,30,50,.78); --panel-line:rgba(150,195,255,.24); --shadow:0 10px 30px rgba(0,0,0,.4);
-    --btn:#eaf2ff; --btn-text:#0f2238; --scrim:rgba(4,10,20,.6);
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0f2238; --grid:rgba(150,195,255,.08); --vignette:rgba(2,8,18,.5);
-  --track:#183553; --edge:#86aede; --line:rgba(225,238,255,.38);
-  --car:#ff8a4c; --lead:#ffe14d; --ok:#5be3a3; --bad:#ff6b87; --accent:#7db4ff;
-  --text:#eaf2ff; --muted:#94aac8;
-  --panel:rgba(14,30,50,.78); --panel-line:rgba(150,195,255,.24); --shadow:0 10px 30px rgba(0,0,0,.4);
-  --btn:#eaf2ff; --btn-text:#0f2238; --scrim:rgba(4,10,20,.6);
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 html,body{height:100%;margin:0;overflow:hidden}
